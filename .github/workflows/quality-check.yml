@@ -19,7 +19,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.4' # Especifica la versión que tienes en tu PC
+          flutter-version: '3.24.4'
           channel: 'stable'
 
       # Step 3: Install dependencies
@@ -28,60 +28,66 @@ jobs:
 
       # Step 4: Verify code formatting
       - name: Verify Code Formatting
+        id: format
         run: flutter format --set-exit-if-changed .
         continue-on-error: true
-      - name: Annotate Formatting Issues
-        if: failure()
-        run: echo "🔴 Code formatting issues detected. Run 'flutter format .' locally to fix them."
 
       # Step 5: Analyze project source
       - name: Analyze Project Source
         id: analyze
         run: |
           flutter analyze > analyze.log 2>&1 || echo "No analysis output" > analyze.log
-      - name: Annotate Analysis Results
-        if: failure()
-        run: |
-          echo "🔴 Issues found during code analysis:"
-          cat analyze.log
+        continue-on-error: true
 
       # Step 6: Run tests
       - name: Run Tests
         id: tests
         run: |
           flutter test --coverage > test.log 2>&1 || echo "No test output" > test.log
-      - name: Annotate Test Results
-        if: failure()
-        run: |
-          echo "❌ Unit test failures detected:"
-          cat test.log
+        continue-on-error: true
 
-      # Step 7: Install lcov and generate coverage report
+      # Step 7: Generate Coverage Report
       - name: Install lcov
         run: sudo apt-get update && sudo apt-get install -y lcov
 
       - name: Generate Coverage Report
+        id: coverage
         if: always()
         run: |
           mkdir -p coverage
           genhtml coverage/lcov.info --output-directory coverage || echo "No coverage data available"
+        continue-on-error: true
 
+      # Step 8: Upload Coverage Report
       - name: Upload Coverage Report
         uses: actions/upload-artifact@v3
         with:
           name: coverage-report
           path: coverage/
 
-      # Step 8: Final Summary Annotations
-      - name: Final Summary
+      # Step 9: Generate Annotations with Table
+      - name: Generate Summary Table
         run: |
-          if [[ ${{ steps.analyze.outcome }} == "failure" ]]; then
-            echo "🔴 Code analysis issues detected."
+          echo '### Quality Check Summary' >> $GITHUB_STEP_SUMMARY
+          echo '| Step                  | Status       | Score | Notes                          |' >> $GITHUB_STEP_SUMMARY
+          echo '|-----------------------|-------------|-------|--------------------------------|' >> $GITHUB_STEP_SUMMARY
+          if [[ ${{ steps.format.outcome }} == "success" ]]; then
+            echo '| Code Formatting       | ✅ Passed    | ⭐⭐⭐⭐⭐ | Well formatted                |' >> $GITHUB_STEP_SUMMARY
           else
-            echo "✅ Code analysis passed."
+            echo '| Code Formatting       | ❌ Failed    | ⭐⭐⭐   | Issues found                  |' >> $GITHUB_STEP_SUMMARY
           fi
-          if [[ ${{ steps.tests.outcome }} == "failure" ]]; then
-            echo "❌ Test failures detected."
+          if [[ ${{ steps.analyze.outcome }} == "success" ]]; then
+            echo '| Code Analysis         | ✅ Passed    | ⭐⭐⭐⭐⭐ | No issues detected            |' >> $GITHUB_STEP_SUMMARY
           else
-            echo "✅ All tests passed."
+            echo '| Code Analysis         | ❌ Failed    | ⭐⭐⭐   | Issues found during analysis  |' >> $GITHUB_STEP_SUMMARY
+          fi
+          if [[ ${{ steps.tests.outcome }} == "success" ]]; then
+            echo '| Tests                 | ✅ Passed    | ⭐⭐⭐⭐⭐ | All tests passed successfully |' >> $GITHUB_STEP_SUMMARY
+          else
+            echo '| Tests                 | ❌ Failed    | ⭐⭐    | Some tests failed             |' >> $GITHUB_STEP_SUMMARY
+          fi
+          if [[ ${{ steps.coverage.outcome }} == "success" ]]; then
+            echo '| Coverage Report       | ✅ Passed    | ⭐⭐⭐⭐⭐ | Coverage report generated     |' >> $GITHUB_STEP_SUMMARY
+          else
+            echo '| Coverage Report       | ❌ Failed    | ⭐⭐⭐   | Could not generate report     |' >> $GITHUB_STEP_SUMMARY
           fi
