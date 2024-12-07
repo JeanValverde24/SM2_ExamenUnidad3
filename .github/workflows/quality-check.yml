@@ -15,11 +15,12 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # Step 2: Set up Flutter (latest stable version)
+      # Step 2: Set up Flutter
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: 'stable'
+          channel: 'stable'
 
       # Step 3: Install dependencies
       - name: Install Dependencies
@@ -36,8 +37,7 @@ jobs:
       # Step 5: Analyze project source
       - name: Analyze Project Source
         id: analyze
-        run: flutter analyze > analyze.log || true
-        continue-on-error: true
+        run: flutter analyze > analyze.log 2>&1 || true
       - name: Annotate Analysis Results
         if: failure()
         run: |
@@ -47,8 +47,7 @@ jobs:
       # Step 6: Run tests
       - name: Run Tests
         id: tests
-        run: flutter test --coverage > test.log || true
-        continue-on-error: true
+        run: flutter test --coverage > test.log 2>&1 || true
       - name: Annotate Test Results
         if: failure()
         run: |
@@ -59,15 +58,13 @@ jobs:
       - name: Generate Coverage Report
         if: always()
         run: |
-          sudo apt-get update && sudo apt-get install -y lcov
-          lcov --directory . --capture --output-file coverage.info
-          lcov --remove coverage.info '/usr/*' '*/.pub-cache/*' --output-file coverage.info
-          lcov --list coverage.info
+          mkdir -p coverage
+          genhtml coverage/lcov.info --output-directory coverage
       - name: Upload Coverage Report
         uses: actions/upload-artifact@v3
         with:
           name: coverage-report
-          path: coverage.info
+          path: coverage/
 
       # Step 8: Final Summary Annotations
       - name: Final Summary
