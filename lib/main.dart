@@ -13,17 +13,17 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false, // Elimina la etiqueta de depuración
+      debugShowCheckedModeBanner: false, 
       title: 'Plataforma Turística',
       theme: ThemeData(
-        primarySwatch: Colors.red, // Color principal
-        scaffoldBackgroundColor: Colors.white, // Fondo blanco
+        primarySwatch: Colors.red, 
+        scaffoldBackgroundColor: const Color.fromARGB(255, 179, 160, 160), 
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF8B0000), // Color guinda para el AppBar
-          foregroundColor: Colors.white, // Color del texto en el AppBar
+          backgroundColor: Color(0xFF8B0000), 
+          foregroundColor: Colors.white, 
         ),
       ),
-      initialRoute: '/loginHome', // Ruta inicial
+      initialRoute: '/loginHome', 
       onGenerateRoute: (settings) {
         switch (settings.name) {
           case '/loginHome':
