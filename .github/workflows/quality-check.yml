@@ -1,0 +1,84 @@
+name: Flutter Quality Check
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Flutter (latest stable version)
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+
+      # Step 3: Install dependencies
+      - name: Install Dependencies
+        run: flutter pub get
+
+      # Step 4: Verify code formatting
+      - name: Verify Code Formatting
+        run: flutter format --set-exit-if-changed .
+        continue-on-error: true
+      - name: Annotate Formatting Issues
+        if: failure()
+        run: echo "🔴 Code formatting issues detected. Run 'flutter format .' locally to fix them."
+
+      # Step 5: Analyze project source
+      - name: Analyze Project Source
+        id: analyze
+        run: flutter analyze > analyze.log || true
+        continue-on-error: true
+      - name: Annotate Analysis Results
+        if: failure()
+        run: |
+          echo "🔴 Issues found during code analysis:"
+          cat analyze.log
+
+      # Step 6: Run tests
+      - name: Run Tests
+        id: tests
+        run: flutter test --coverage > test.log || true
+        continue-on-error: true
+      - name: Annotate Test Results
+        if: failure()
+        run: |
+          echo "❌ Unit test failures detected:"
+          cat test.log
+
+      # Step 7: Generate and Upload Coverage Report
+      - name: Generate Coverage Report
+        if: always()
+        run: |
+          sudo apt-get update && sudo apt-get install -y lcov
+          lcov --directory . --capture --output-file coverage.info
+          lcov --remove coverage.info '/usr/*' '*/.pub-cache/*' --output-file coverage.info
+          lcov --list coverage.info
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: coverage.info
+
+      # Step 8: Final Summary Annotations
+      - name: Final Summary
+        run: |
+          if [[ ${{ steps.analyze.outcome }} == "failure" ]]; then
+            echo "🔴 Code analysis issues detected."
+          else
+            echo "✅ Code analysis passed."
+          fi
+          if [[ ${{ steps.tests.outcome }} == "failure" ]]; then
+            echo "❌ Test failures detected."
+          else
+            echo "✅ All tests passed."
+          fi
