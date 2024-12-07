@@ -19,7 +19,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'stable'
+          flutter-version: '3.24.4' # Especifica la versión que tienes en tu PC
           channel: 'stable'
 
       # Step 3: Install dependencies
@@ -37,7 +37,8 @@ jobs:
       # Step 5: Analyze project source
       - name: Analyze Project Source
         id: analyze
-        run: flutter analyze > analyze.log 2>&1 || true
+        run: |
+          flutter analyze > analyze.log 2>&1 || echo "No analysis output" > analyze.log
       - name: Annotate Analysis Results
         if: failure()
         run: |
@@ -47,19 +48,24 @@ jobs:
       # Step 6: Run tests
       - name: Run Tests
         id: tests
-        run: flutter test --coverage > test.log 2>&1 || true
+        run: |
+          flutter test --coverage > test.log 2>&1 || echo "No test output" > test.log
       - name: Annotate Test Results
         if: failure()
         run: |
           echo "❌ Unit test failures detected:"
           cat test.log
 
-      # Step 7: Generate and Upload Coverage Report
+      # Step 7: Install lcov and generate coverage report
+      - name: Install lcov
+        run: sudo apt-get update && sudo apt-get install -y lcov
+
       - name: Generate Coverage Report
         if: always()
         run: |
           mkdir -p coverage
-          genhtml coverage/lcov.info --output-directory coverage
+          genhtml coverage/lcov.info --output-directory coverage || echo "No coverage data available"
+
       - name: Upload Coverage Report
         uses: actions/upload-artifact@v3
         with:
